@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<!--
+  index.html - To-Do List Frontend
+  Uses Jinja2 templating to render tasks from the Flask backend.
+  All styling is done inline via a <style> block (no external CSS files needed).
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My To-Do List</title>
+  <style>
+    /* ── Reset & Base ─────────────────────────────────────────────────────── */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #f0f4f8;
+      color: #2d3748;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 16px;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+      width: 100%;
+      max-width: 560px;
+      overflow: hidden;
+    }
+
+    .card-header {
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+      padding: 28px 32px;
+      color: #ffffff;
+    }
+
+    .card-header h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .card-header p {
+      margin-top: 4px;
+      font-size: 0.9rem;
+      opacity: 0.85;
+    }
+
+    .card-body {
+      padding: 28px 32px;
+    }
+
+    /* ── Add Task Form ── */
+    .add-form {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+
+    .add-form input[type="text"] {
+      flex: 1;
+      padding: 10px 14px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+      color: #2d3748;
+    }
+
+    .add-form input[type="text"]:focus {
+      border-color: #4f46e5;
+    }
+
+    .add-form input[type="text"]::placeholder {
+      color: #a0aec0;
+    }
+
+    .btn-add {
+      padding: 10px 20px;
+      background: #4f46e5;
+      color: #ffffff;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      white-space: nowrap;
+    }
+
+    .btn-add:hover { background: #4338ca; }
+    .btn-add:active { transform: scale(0.97); }
+
+    /* ── Empty State ── */
+    .empty-state {
+      text-align: center;
+      padding: 36px 0;
+      color: #a0aec0;
+    }
+
+    .empty-state .empty-icon {
+      font-size: 3rem;
+      margin-bottom: 12px;
+    }
+
+    .empty-state p { font-size: 0.95rem; }
+
+    /* ── Task List ── */
+    .task-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .task-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      background: #f7fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      transition: box-shadow 0.2s;
+    }
+
+    .task-item:hover {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    /* Completed tasks get a green tint */
+    .task-item.completed {
+      background: #f0fff4;
+      border-color: #c6f6d5;
+    }
+
+    .task-title {
+      flex: 1;
+      font-size: 0.97rem;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+
+    /* Strike-through for completed tasks */
+    .task-item.completed .task-title {
+      text-decoration: line-through;
+      color: #a0aec0;
+    }
+
+    .task-actions {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .btn {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 7px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+
+    .btn:hover { opacity: 0.85; }
+    .btn:active { transform: scale(0.96); }
+
+    .btn-complete { background: #48bb78; color: #ffffff; }
+    .task-item.completed .btn-complete { background: #a0aec0; }
+
+    .btn-delete { background: #fc8181; color: #ffffff; }
+    .btn-delete:hover { background: #f56565; opacity: 1; }
+
+    /* ── Footer Summary ── */
+    .footer-summary {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.83rem;
+      color: #718096;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 400px) {
+      .card-header, .card-body { padding: 20px; }
+      .add-form { flex-direction: column; }
+      .btn-add { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+
+    <div class="card-header">
+      <h1>My To-Do List</h1>
+      <p>Stay organised — one task at a time.</p>
+    </div>
+
+    <div class="card-body">
+
+      <!-- Add Task Form -->
+      <form class="add-form" action="/add" method="POST">
+        <input
+          type="text"
+          name="title"
+          placeholder="What needs to be done?"
+          maxlength="200"
+          required
+          autofocus
+        />
+        <button type="submit" class="btn-add">+ Add Task</button>
+      </form>
+
+      {% if tasks %}
+        <ul class="task-list">
+          {% for task in tasks %}
+            <li class="task-item {% if task.completed %}completed{% endif %}">
+
+              <span class="task-title">{{ task.title }}</span>
+
+              <div class="task-actions">
+
+                <a
+                  href="/complete/{{ task.id }}"
+                  class="btn btn-complete"
+                  title="{% if task.completed %}Mark as incomplete{% else %}Mark as complete{% endif %}"
+                >
+                  {% if task.completed %}Undo{% else %}Done{% endif %}
+                </a>
+
+                <a
+                  href="/delete/{{ task.id }}"
+                  class="btn btn-delete"
+                  title="Delete this task"
+                  onclick="return confirm('Delete this task?')"
+                >
+                  Delete
+                </a>
+
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+
+        <div class="footer-summary">
+          <span>{{ tasks | length }} task{% if tasks | length != 1 %}s{% endif %} total</span>
+          <span>{{ tasks | selectattr('completed') | list | length }} completed</span>
+        </div>
+
+      {% else %}
+        <div class="empty-state">
+          <div class="empty-icon">📋</div>
+          <p>No tasks yet — add one above to get started!</p>
+        </div>
+      {% endif %}
+
+    </div>
+
+  </div>
+
+</body>
+</html>
